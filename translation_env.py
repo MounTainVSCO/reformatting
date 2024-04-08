@@ -1,6 +1,7 @@
 
 from docx import Document
 from docx.shared import Pt
+from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 
 # Paragraph-Level Formatting: 
 
@@ -13,8 +14,12 @@ from docx.shared import Pt
 
 # Applies to specific segments of text within a paragraph, controlling font type, size, bold, italic, underline, and color. 
 # Run-level formatting takes precedence over paragraph-level formatting for these attributes.
+
+
+# translation of text with context: get original paragraph -> get paragraph styles and runs! -> start translation of original text 
     
 def paragraph_and_runs_formatting(file_path):
+    # Get a motha fuckin paragraph
     doc = Document(file_path)
     text_and_formatting = {}
 
@@ -31,6 +36,7 @@ def paragraph_and_runs_formatting(file_path):
         }
         runs = []
         for run in para.runs:
+            if (not run.text or run.text == " "): continue # new line
             run_details = {
                 "text": run.text,
                 "bold": run.bold,
@@ -43,43 +49,44 @@ def paragraph_and_runs_formatting(file_path):
         text_and_formatting[para_text] = [para_format, runs]
     return text_and_formatting
 
-def create_docx(paragraph_runs):
-    doc = Document()
-    for text, run_styles in paragraph_runs.items():
-        paragraph = doc.add_paragraph()
-        for run_sequence in run_styles:
 
-            run = paragraph.add_run(run_sequence['text'])
-            if run_sequence['bold'] is not None:
-                run.bold = run_sequence['bold']
-            if run_sequence['italic'] is not None:
-                run.italic = run_sequence['italic']
-            if run_sequence['underline'] is not None:
-                run.underline = run_sequence['underline']
-            if run_sequence['font'] is not None:
-                run.font.name = run_sequence['font']
-            if run_sequence['size'] is not None:
-                run.font.size = Pt(run_sequence['size'] / 12700)
+def reformatted_text(paragraph_runs):
 
-        if paragraph['style'] in doc.styles:
-            paragraph.style = doc.styles[paragraph['style']]
-        if paragraph['alignment'] is not None:
-            paragraph.alignment = paragraph['alignment']
-        if paragraph['left_indent'] is not None:
-            paragraph.paragraph_format.left_indent = paragraph['left_indent']
-        if paragraph['right_indent'] is not None:
-            paragraph.paragraph_format.right_indent = paragraph['right_indent']
-        if paragraph['first_line_indent'] is not None:
-            paragraph.paragraph_format.first_line_indent = paragraph['first_line_indent']
+    paragraph = doc.add_paragraph()
+    for text, paragraph_and_runs_styles in paragraph_runs.items():
+        
+        paragraph_styles = paragraph_and_runs_styles[0]
 
-        doc.save()
-    doc.save()
+        all_runs_in_paragraph = paragraph_and_runs_styles[1]
+        for run in all_runs_in_paragraph:
+            runs = paragraph.add_run(f"{run['text']} ")
+            if run['bold'] is not None:
+                runs.bold = run['bold']
+            if run['italic'] is not None:
+                runs.italic = run['italic']
+            if run['underline'] is not None:
+                runs.underline = run['underline']
+            if run['font'] is not None:
+                runs.font.name = run['font']
+            if run['size'] is not None:
+                runs.font.size = Pt(run['size'] / 12700)
+            
+        if paragraph_styles['alignment'] ==  WD_PARAGRAPH_ALIGNMENT.RIGHT: paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.RIGHT
+        elif paragraph_styles['alignment'] ==  WD_PARAGRAPH_ALIGNMENT.LEFT: paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
+        elif paragraph_styles['alignment'] ==  WD_PARAGRAPH_ALIGNMENT.CENTER: paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+        if paragraph_styles['style']: paragraph.style = paragraph_styles['style']
+        if paragraph_styles['alignment']: paragraph.alignment = paragraph_styles['alignment']
+        if paragraph_styles['left_indent']: paragraph.left_indent = paragraph_styles['left_indent']
+        if paragraph_styles['right_indent']: paragraph.right_indent = paragraph_styles['right_indent']
+        if paragraph_styles['first_line_indent']: paragraph.first_line_indent = paragraph_styles['first_line_indent']
 
-
-
+        doc.save(output_file)
+    doc.save(output_file)
 
 if (__name__ == "__main__"):
+    doc = Document()
+
     input_file ="input_file/reformatting env(3).docx"
+    output_file = "output_file/out-reformatting env(3).docx"
     text_formatting = paragraph_and_runs_formatting(input_file)
-    for i, k in text_formatting.items():
-        print(f"{i}: {k}\n")
+    reformatted_text(text_formatting)
